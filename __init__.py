@@ -69,7 +69,16 @@ class CreateAnimationAsset(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
         dst_action = bpy.data.actions.new("test")
-        copy_keyframes = 
+        src_obj = bpy.context
+        for action in src_obj.actions:
+            for fcurve in action.fcurves:
+                src_keyframe_points = fcurve.keyframe_points
+                dst_action.fcurves.new()
+
+                # I need to figure out how to create fcurves from dst_action the same data path as each fcurve of src_action
+                # probably need to look at what Pose Library did on that, but i need to ensure that I'm getting the keyframe points themselves,
+                # not the value of the fcurve in the specific time which what Pose Library does
+                
         return {'FINISHED'}
 
 def menu_func(self, context):
