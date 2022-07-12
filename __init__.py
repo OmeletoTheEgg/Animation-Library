@@ -10,7 +10,7 @@ bl_info = {
     "category": "Animation",
 }
 
-# from typing import Optional, FrozenSet, Set, Union, Iterable, cast
+from typing import Optional, FrozenSet, Set, Union, Iterable, cast
 import bpy
 
 # class PoseCreationParams:
@@ -55,20 +55,21 @@ import bpy
 #             bpy.data.actions.remove(dst_action)
 
 class CreateAnimationAsset(bpy.types.Operator):
-    bl_idname = "poselib.create_animation_asset"
-    bl_label = "Create Animation Asset"
+    bl_idname = "object.create_animation_asset"
+    bl_label = "Create Animation Asset test"
     bl_description = (
         "Creates an Action that contains the selected keyframes of the selected bones, marks it as an asset"
     )
     bl_options = {"REGISTER", "UNDO"} 
 
 
-    # @classmethod
-    # def poll(cls, context: bpy.types.Context) -> bool:
-    #     return context.active_object is not None
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return context.active_object is not None
 
-    def execute(self, context: bpy.types.Context):
+    def execute(self, context: bpy.types.Context) -> Set[str]:
         dst_action = bpy.data.actions.new("test")
+        return {'FINISHED'}
 
 def menu_func(self, context):
     self.layout.operator(CreateAnimationAsset.bl_idname, text=CreateAnimationAsset.bl_label)
