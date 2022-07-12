@@ -69,6 +69,7 @@ class CreateAnimationAsset(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
         dst_action = bpy.data.actions.new("test")
+        copy_keyframes = 
         return {'FINISHED'}
 
 def menu_func(self, context):
