@@ -29,20 +29,34 @@ class ApplyAnimationAsset(bpy.types.Operator):
     #     return context.active_object is not None
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        print("test")
-        target_action = bpy.context.object.animation_data.action
+        
+        frame_current = context.scene.frame_current
+        target_action = context.object.animation_data.action
         from_action = bpy.data.actions["Asset"]
+        # smallest_x = min(from_action.fcurves.keyframe_points.co.x)
         bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
+
         for bone_name in sorted(bone_names):
             for location_index in range(3):
                 bone = bpy.context.object.pose.bones[bone_name]
                 rna_path = bone.path_from_id("location")
-                new_fcurve = target_action.fcurves.find(rna_path, index=location_index)
-                if new_fcurve is None:
-                    new_fcurve = target_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
-                src_fcurve = from_action.fcurves.find(rna_path, index=location_index)
-                for keyframe in src_fcurve.keyframe_points:
-                    new_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
+                target_fcurve = target_action.fcurves.find(rna_path, index=location_index)
+                from_fcurve = from_action.fcurves.find(rna_path, index=location_index)
+                if target_fcurve is None:
+                    target_fcurve = target_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
+                    
+                target_fcurve.update()
+
+                for keyframe in from_fcurve.keyframe_points:
+                    target_fcurve.keyframe_points.insert(frame=keyframe.co.x + frame_current, value=keyframe.co.y)
+
+                
+
+        # print(smallest_x)
+
+        
+                
+                
 
         return {'FINISHED'}
         
@@ -63,7 +77,7 @@ class CreateAnimationAsset(bpy.types.Operator):
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
         new_action = bpy.data.actions.new("Asset")
-        src_action = bpy.context.object.animation_data.action
+        src_action = context.object.animation_data.action
         bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
         for bone_name in sorted(bone_names):
             for location_index in range(3):
