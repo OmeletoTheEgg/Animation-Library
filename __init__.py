@@ -85,6 +85,10 @@ class CreateAnimationAsset(bpy.types.Operator):
                 for keyframe in src_fcurve.keyframe_points:
                     new_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
 
+                new_action.asset_mark()
+                new_action.asset_generate_preview()
+
+
                 
 
  
