@@ -18,8 +18,15 @@ from bpy.types import (
     Action,
     Object,
     FCurve,
-    Operator
+    Operator,
+    AssetHandle,
+    Context,
+    Panel,
+    UIList,
+    WindowManager,
+    WorkSpace,
 )
+from bpy_extras import asset_utils
 
 # Things left to do
 # Fix when the selected bones in the asset is not present in the destination action
@@ -190,6 +197,23 @@ class ApplyAnimationAsset(Operator):
         # context.scene.frame_current = frame_current
         return {'FINISHED'}
         
+class AnimationLibraryPanel(bpy.types.Panel):
+    """Creates a Sub-Panel in the Property Area of the 3D View"""
+    bl_label = "Animation Library (by Omeleto)"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animation"
+    bl_context = "posemode"
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        row = layout.row()
+        row.operator("animation.create_animation_asset")
+        layout.separator()
+
+
 def menu_func(self, context):
     self.layout.operator(CreateAnimationAsset.bl_idname, text=CreateAnimationAsset.bl_label)
     self.layout.operator(ApplyAnimationAsset.bl_idname, text=ApplyAnimationAsset.bl_label)
@@ -198,6 +222,8 @@ def register():
     bpy.utils.register_class(CreateAnimationAsset)
     bpy.utils.register_class(ApplyAnimationAsset)
     bpy.types.VIEW3D_MT_pose.append(menu_func)
+    
+    bpy.utils.register_class(AnimationLibraryPanel)
 
     window_manager = bpy.context.window_manager
     if window_manager.keyconfigs.addon is None:
@@ -212,6 +238,9 @@ def unregister():
     bpy.utils.unregister_class(CreateAnimationAsset)
     bpy.utils.unregister_class(ApplyAnimationAsset)
     bpy.types.VIEW3D_MT_pose.remove(menu_func)
+
+    bpy.utils.unregister_class(AnimationLibraryPanel)
+
 
     # Clear shortcuts from the keymap.
     for km, kmi in addon_keymaps:
