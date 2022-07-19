@@ -95,10 +95,10 @@ class ApplyAnimationAsset(Operator):
         return context.active_object is not None
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        
+        selected_asset_name = context.selected_asset_files[0].local_id.name
         frame_current = context.scene.frame_current
         to_action = context.object.animation_data.action
-        from_action = bpy.data.actions["Asset.007"]
+        from_action = bpy.data.actions[selected_asset_name]
         smallest_x = from_action.fcurves[0].keyframe_points[0].co.x
         
         for fcurves in from_action.fcurves:
