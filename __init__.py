@@ -21,15 +21,12 @@ from bpy.types import (
 
 # Things left to do
 #
-# Create animation asset based on selection of keyframes
-# Paste animation asset based on what asset is selected
 # Create asset based on what's the name of the action
 # Try not using bone.path_from_id all that shit
 # Consider the handle types, keyframe types
-# Modularize transferring keyframes in general, because you'll have to do locrotscale for both creating and paste
 # Fix fcurve update
 # Select bones operator
-# 
+# Do the things for rotation and location, maybe also bbone 
 #
 
 
@@ -55,10 +52,7 @@ def copy_location_to_action(from_action: Action, to_action: Action, frame_curren
                         target_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
                 else:
                     target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
-
             
-
-
 class CreateAnimationAsset(Operator):
     bl_idname = "animation.create_animation_asset"
     bl_label = "Create Animation Asset"
@@ -73,7 +67,7 @@ class CreateAnimationAsset(Operator):
         return context.active_object is not None
 
     def execute(self, context: Operator) -> Set[str]:
-        to_action = bpy.data.actions.new("Asset")
+        to_action = bpy.data.actions.new(context.object.animation_data.action.name_full)
         from_action = context.object.animation_data.action
         copy_location_to_action(from_action, to_action, 0, 0, False)
         to_action.asset_mark()
@@ -109,8 +103,6 @@ class ApplyAnimationAsset(Operator):
         copy_location_to_action(from_action, to_action, frame_current, smallest_x, True)
         return {'FINISHED'}
         
-
-
 def menu_func(self, context):
     self.layout.operator(CreateAnimationAsset.bl_idname, text=CreateAnimationAsset.bl_label)
     self.layout.operator(ApplyAnimationAsset.bl_idname, text=ApplyAnimationAsset.bl_label)
