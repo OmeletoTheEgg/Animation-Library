@@ -13,10 +13,12 @@ bl_info = {
 import inspect
 from typing import Optional, FrozenSet, Set, Union, Iterable, cast
 import bpy
-from bpy import [
-        Action,
-        Operator
-]
+from bpy.types import (
+    Action,
+    Object,
+    Operator
+)
+        
 
 class CreateAnimationAsset(Operator):
     bl_idname = "pose.create_animation_asset"
@@ -68,8 +70,13 @@ class ApplyAnimationAsset(Operator):
         frame_current = context.scene.frame_current
         target_action = context.object.animation_data.action
         from_action = bpy.data.actions["Asset"]
-        # smallest_x = min(from_action.fcurves.keyframe_points.co.x)
+        smallest_x = 0
         bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
+        
+        for fcurves in from_action.fcurves:
+            for keyframes in fcurves.keyframes:
+                if keyframes.co.x < smallest_x:
+                    smallest_x = keyframes.co.x
 
         for bone_name in sorted(bone_names):
             for location_index in range(3):
@@ -83,7 +90,7 @@ class ApplyAnimationAsset(Operator):
                 target_fcurve.update()
 
                 for keyframe in from_fcurve.keyframe_points:
-                    target_fcurve.keyframe_points.insert(frame=keyframe.co.x + frame_current, value=keyframe.co.y)
+                    target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
                 
         # print(smallest_x)
 
