@@ -33,13 +33,14 @@ addon_keymaps: List[Tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
 
 def copy_location_to_action(from_action: Action, to_action: Action, frame_current: float, smallest_x: float, apply: bool):
     bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
-    for bone_name in sorted(bone_names):
+    for bone_name in bone_names:
         for location_index in range(3):
             bone = bpy.context.object.pose.bones[bone_name]
+            print(bone)
             rna_path = bone.path_from_id("location")
             from_fcurve = from_action.fcurves.find(rna_path, index=location_index)
             if from_fcurve is None:
-                return
+                break
 
             to_fcurve = to_action.fcurves.find(rna_path, index=location_index)
             if to_fcurve is None:
@@ -55,14 +56,14 @@ def copy_location_to_action(from_action: Action, to_action: Action, frame_curren
 
 def copy_rotation_to_action(from_action: Action, to_action: Action, frame_current: float, smallest_x: float, apply: bool):
     bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
-    for bone_name in sorted(bone_names):
+    for bone_name in bone_names:
         bone = bpy.context.object.pose.bones[bone_name]
         if bone.rotation_mode == "QUATERNION":
             for rotation_index in range(4):
                 rna_path = bone.path_from_id("rotation_quaternion")
                 from_fcurve = from_action.fcurves.find(rna_path, index=rotation_index)
                 if from_fcurve is None:
-                    return
+                    break
 
                 to_fcurve = to_action.fcurves.find(rna_path, index=rotation_index)
                 if to_fcurve is None:
@@ -80,7 +81,7 @@ def copy_rotation_to_action(from_action: Action, to_action: Action, frame_curren
                 rna_path = bone.path_from_id("rotation_axis_angle")
                 from_fcurve = from_action.fcurves.find(rna_path, index=rotation_index)
                 if from_fcurve is None:
-                    return
+                    break
 
                 to_fcurve = to_action.fcurves.find(rna_path, index=rotation_index)
                 if to_fcurve is None:
@@ -98,7 +99,7 @@ def copy_rotation_to_action(from_action: Action, to_action: Action, frame_curren
                 rna_path = bone.path_from_id("rotation_euler")
                 from_fcurve = from_action.fcurves.find(rna_path, index=rotation_index)
                 if from_fcurve is None:
-                    return
+                    break
 
                 to_fcurve = to_action.fcurves.find(rna_path, index=rotation_index)
                 if to_fcurve is None:
@@ -112,6 +113,29 @@ def copy_rotation_to_action(from_action: Action, to_action: Action, frame_curren
                     else:
                         to_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
             
+
+def copy_scale_to_action(from_action: Action, to_action: Action, frame_current: float, smallest_x: float, apply: bool):
+    bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
+    for bone_name in bone_names:
+        for scale_index in range(3):
+            bone = bpy.context.object.pose.bones[bone_name]
+            rna_path = bone.path_from_id("scale")
+            from_fcurve = from_action.fcurves.find(rna_path, index=scale_index)
+            if from_fcurve is None:
+                break
+
+            to_fcurve = to_action.fcurves.find(rna_path, index=scale_index)
+            if to_fcurve is None:
+                to_fcurve = to_action.fcurves.new(rna_path, index=scale_index, action_group=bone_name)
+                
+            for keyframe in from_fcurve.keyframe_points:
+                
+                if not apply:
+                    if keyframe.select_control_point:
+                        to_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
+                else:
+                    to_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
+                    
 class CreateAnimationAsset(Operator):
     bl_idname = "animation.create_animation_asset"
     bl_label = "Create Animation Asset"
@@ -130,6 +154,7 @@ class CreateAnimationAsset(Operator):
         from_action = context.object.animation_data.action
         copy_location_to_action(from_action, to_action, 0, 0, False)
         copy_rotation_to_action(from_action, to_action, 0, 0, False)
+        copy_scale_to_action(from_action, to_action, 0, 0, False)
         to_action.asset_mark()
         to_action.asset_generate_preview()
         
@@ -167,6 +192,7 @@ class ApplyAnimationAsset(Operator):
 
         copy_location_to_action(from_action, to_action, frame_current, smallest_x, True)
         copy_rotation_to_action(from_action, to_action, frame_current, smallest_x, True)
+        copy_scale_to_action(from_action, to_action, frame_current, smallest_x, True)
         # this is just to update the fcurves after applying animation. 
         # I found that fcurve.update() isn't working maybe just from what I expect
         context.scene.frame_current = frame_current
