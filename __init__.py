@@ -19,7 +19,45 @@ from bpy.types import (
     Operator
 )
 
+# Things left to do
+#
+# Create animation asset based on selection of keyframes
+# Paste animation asset based on what asset is selected
+# Create asset based on what's the name of the action
+# Try not using bone.path_from_id all that shit
+# Consider the handle types, keyframe types
+# Modularize transferring keyframes in general, because you'll have to do locrotscale for both creating and paste
+# Fix fcurve update
+# Select bones operator
+# 
+#
+
+
+
 addon_keymaps: List[Tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
+
+def copy_location_to_action(from_action: Action, to_action: Action, frame_current: float, smallest_x: float, apply: bool):
+    bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
+    for bone_name in sorted(bone_names):
+        for location_index in range(3):
+            bone = bpy.context.object.pose.bones[bone_name]
+            rna_path = bone.path_from_id("location")
+            target_fcurve = to_action.fcurves.find(rna_path, index=location_index)
+            from_fcurve = from_action.fcurves.find(rna_path, index=location_index)
+            if target_fcurve is None:
+                target_fcurve = to_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
+                
+            target_fcurve.update()
+
+            for keyframe in from_fcurve.keyframe_points:
+                if not apply:
+                    if keyframe.select_control_point:
+                        target_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
+                else:
+                    target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
+
+            
+
 
 class CreateAnimationAsset(Operator):
     bl_idname = "animation.create_animation_asset"
@@ -35,22 +73,11 @@ class CreateAnimationAsset(Operator):
         return context.active_object is not None
 
     def execute(self, context: Operator) -> Set[str]:
-        new_action = bpy.data.actions.new("Asset")
-        src_action = context.object.animation_data.action
-        bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
-        for bone_name in sorted(bone_names):
-            for location_index in range(3):
-                bone = bpy.context.object.pose.bones[bone_name]
-                rna_path = bone.path_from_id("location")
-                new_fcurve = new_action.fcurves.find(rna_path, index=location_index)
-                if new_fcurve is None:
-                    new_fcurve = new_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
-                src_fcurve = src_action.fcurves.find(rna_path, index=location_index)
-                for keyframe in src_fcurve.keyframe_points:
-                    new_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
-                
-                new_action.asset_mark()
-                new_action.asset_generate_preview()
+        to_action = bpy.data.actions.new("Asset")
+        from_action = context.object.animation_data.action
+        copy_location_to_action(from_action, to_action, 0, 0, False)
+        to_action.asset_mark()
+        to_action.asset_generate_preview()
         
         return {'FINISHED'}
 
@@ -59,7 +86,7 @@ class ApplyAnimationAsset(Operator):
     bl_idname = "animation.apply_animation_asset"
     bl_label = "Apply Animation Asset"
     bl_description = (
-        "Creates an Action that contains the selected keyframes of the selected bones, marks it as an asset"
+        "Applies the Asset keyframes to the current action"
     )
     bl_options = {"REGISTER", "UNDO"}
 
@@ -70,32 +97,16 @@ class ApplyAnimationAsset(Operator):
     def execute(self, context: bpy.types.Context) -> Set[str]:
         
         frame_current = context.scene.frame_current
-        target_action = context.object.animation_data.action
-        from_action = bpy.data.actions["Asset.001"]
-        smallest_x = from_action.fcurves[0].keframe_points[0].co.x
-        bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
+        to_action = context.object.animation_data.action
+        from_action = bpy.data.actions["Asset.007"]
+        smallest_x = from_action.fcurves[0].keyframe_points[0].co.x
         
         for fcurves in from_action.fcurves:
             keyframe = fcurves.keyframe_points[0]
             if keyframe.co.x < smallest_x:
                 smallest_x = keyframe.co.x
 
-        for bone_name in sorted(bone_names):
-            for location_index in range(3):
-                bone = bpy.context.object.pose.bones[bone_name]
-                rna_path = bone.path_from_id("location")
-                target_fcurve = target_action.fcurves.find(rna_path, index=location_index)
-                from_fcurve = from_action.fcurves.find(rna_path, index=location_index)
-                if target_fcurve is None:
-                    target_fcurve = target_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
-                    
-                target_fcurve.update()
-
-                for keyframe in from_fcurve.keyframe_points:
-                    target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
-                
-        print(smallest_x)
-
+        copy_location_to_action(from_action, to_action, frame_current, smallest_x, True)
         return {'FINISHED'}
         
 
