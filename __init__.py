@@ -20,14 +20,13 @@ from bpy.types import (
 )
 
 # Things left to do
-#
-# Create asset based on what's the name of the action
+# 
+# Talking about fcurve availability, fix the fact that when pasting action, it errors when the receiving action doesn't have an fcurve and it errors
 # Try not using bone.path_from_id all that shit
-# Consider the handle types, keyframe types
 # Fix fcurve update
 # Select bones operator
 # Do the things for rotation and location, maybe also bbone 
-#
+# Create fail-cases of like what if there's no keyframes selected
 
 
 
@@ -39,19 +38,19 @@ def copy_location_to_action(from_action: Action, to_action: Action, frame_curren
         for location_index in range(3):
             bone = bpy.context.object.pose.bones[bone_name]
             rna_path = bone.path_from_id("location")
-            target_fcurve = to_action.fcurves.find(rna_path, index=location_index)
             from_fcurve = from_action.fcurves.find(rna_path, index=location_index)
-            if target_fcurve is None:
-                target_fcurve = to_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
+            to_fcurve = to_action.fcurves.find(rna_path, index=location_index)
+            if to_fcurve is None:
+                to_fcurve = to_action.fcurves.new(rna_path, index=location_index, action_group=bone_name)
                 
-            target_fcurve.update()
-
             for keyframe in from_fcurve.keyframe_points:
                 if not apply:
                     if keyframe.select_control_point:
-                        target_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
+                        to_fcurve.keyframe_points.insert(frame=keyframe.co.x, value=keyframe.co.y)
                 else:
-                    target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
+                    to_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
+            
+            to_fcurve.update()
             
 class CreateAnimationAsset(Operator):
     bl_idname = "animation.create_animation_asset"
@@ -92,6 +91,8 @@ class ApplyAnimationAsset(Operator):
         selected_asset_name = context.selected_asset_files[0].local_id.name
         frame_current = context.scene.frame_current
         to_action = context.object.animation_data.action
+        if to_action is None:
+            to_action = bpy.data.actions.new(context.object.name_full)
         from_action = bpy.data.actions[selected_asset_name]
         smallest_x = from_action.fcurves[0].keyframe_points[0].co.x
         
