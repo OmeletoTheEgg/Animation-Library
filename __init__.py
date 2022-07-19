@@ -11,17 +11,18 @@ bl_info = {
 }
 
 import inspect
-from typing import Optional, FrozenSet, Set, Union, Iterable, cast
+from typing import Optional, FrozenSet, Set, Union, Iterable, cast, List, Tuple
 import bpy
 from bpy.types import (
     Action,
     Object,
     Operator
 )
-        
+
+addon_keymaps: List[Tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
 
 class CreateAnimationAsset(Operator):
-    bl_idname = "pose.create_animation_asset"
+    bl_idname = "animation.create_animation_asset"
     bl_label = "Create Animation Asset"
     bl_description = (
         "Creates an Action that contains the selected keyframes of the selected bones, marks it as an asset"
@@ -55,7 +56,7 @@ class CreateAnimationAsset(Operator):
 
 
 class ApplyAnimationAsset(Operator):
-    bl_idname = "pose.apply_animation_asset"
+    bl_idname = "animation.apply_animation_asset"
     bl_label = "Apply Animation Asset"
     bl_description = (
         "Creates an Action that contains the selected keyframes of the selected bones, marks it as an asset"
@@ -71,11 +72,9 @@ class ApplyAnimationAsset(Operator):
         frame_current = context.scene.frame_current
         target_action = context.object.animation_data.action
         from_action = bpy.data.actions["Asset.001"]
-        smallest_x = 100000
+        smallest_x = from_action.fcurves[0].keframe_points[0].co.x
         bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
         
-        print(from_action.fcurves[0].keyframe_points[3].co.x)
-
         for fcurves in from_action.fcurves:
             keyframe = fcurves.keyframe_points[0]
             if keyframe.co.x < smallest_x:
@@ -110,10 +109,24 @@ def register():
     bpy.utils.register_class(ApplyAnimationAsset)
     bpy.types.VIEW3D_MT_pose.append(menu_func)
 
+    window_manager = bpy.context.window_manager
+    if window_manager.keyconfigs.addon is None:
+        return
+
+    km = window_manager.keyconfigs.addon.keymaps.new(name="File Browser Main", space_type="FILE_BROWSER")
+
+    kmi = km.keymap_items.new("animation.apply_animation_asset", "RIGHTMOUSE", "DOUBLE_CLICK")
+    addon_keymaps.append((km, kmi))
+
 def unregister():
     bpy.utils.unregister_class(CreateAnimationAsset)
     bpy.utils.unregister_class(ApplyAnimationAsset)
     bpy.types.VIEW3D_MT_pose.remove(menu_func)
+
+    # Clear shortcuts from the keymap.
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+    addon_keymaps.clear()
 
 if __name__ == "__main__":
     register()
