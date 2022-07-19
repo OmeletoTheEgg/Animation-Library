@@ -62,6 +62,7 @@ class ApplyAnimationAsset(Operator):
     )
     bl_options = {"REGISTER", "UNDO"}
 
+    @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return context.active_object is not None
 
@@ -69,14 +70,16 @@ class ApplyAnimationAsset(Operator):
         
         frame_current = context.scene.frame_current
         target_action = context.object.animation_data.action
-        from_action = bpy.data.actions["Asset"]
-        smallest_x = 0
+        from_action = bpy.data.actions["Asset.001"]
+        smallest_x = 100000
         bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
         
+        print(from_action.fcurves[0].keyframe_points[3].co.x)
+
         for fcurves in from_action.fcurves:
-            for keyframes in fcurves.keyframes:
-                if keyframes.co.x < smallest_x:
-                    smallest_x = keyframes.co.x
+            keyframe = fcurves.keyframe_points[0]
+            if keyframe.co.x < smallest_x:
+                smallest_x = keyframe.co.x
 
         for bone_name in sorted(bone_names):
             for location_index in range(3):
@@ -92,7 +95,7 @@ class ApplyAnimationAsset(Operator):
                 for keyframe in from_fcurve.keyframe_points:
                     target_fcurve.keyframe_points.insert(frame=(keyframe.co.x + frame_current) - smallest_x, value=keyframe.co.y)
                 
-        # print(smallest_x)
+        print(smallest_x)
 
         return {'FINISHED'}
         
