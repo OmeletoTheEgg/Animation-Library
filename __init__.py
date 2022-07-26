@@ -14,6 +14,12 @@ import inspect
 from typing import Optional, FrozenSet, Set, Union, Iterable, cast, List, Tuple
 import bpy
 # import re
+
+from pathlib import Path
+from typing import Any, List, Iterable
+
+Datablock = Any
+
 from bpy.types import (
     Action,
     Object,
@@ -111,8 +117,6 @@ def copy_rotation_to_action(from_action: Action, to_action: Action, frame_curren
                     
                 insert_keyframes(from_fcurve, to_fcurve, frame_current, smallest_x, apply)
                 
-            
-
 def copy_scale_to_action(from_action: Action, to_action: Action, frame_current: float, smallest_x: float, apply: bool):
     bone_names = {bone.name for bone in bpy.context.selected_pose_bones_from_active_object}
     for bone_name in bone_names:
@@ -143,7 +147,6 @@ class CreateAnimationAsset(Operator):
     )
     bl_options = {"REGISTER", "UNDO"} 
 
-
     @classmethod
     def poll(cls, context: Operator) -> bool:
         return context.active_object is not None
@@ -173,9 +176,31 @@ class ApplyAnimationAsset(Operator):
         return context.active_object is not None
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        print("testtsetsts")
-        selected_asset_name = context.selected_asset_files[0].local_id.name
-        from_action = bpy.data.actions[selected_asset_name]
+        current_library_name = context.area.spaces.active.params.asset_library_ref
+        selected_asset_name = []
+        library_path : Path
+
+        asset_fullpath : Any
+
+        if current_library_name != "LOCAL":  # NOT Current file
+            library_path = Path(context.preferences.filepaths.asset_libraries.get(current_library_name).path)
+
+        for asset_file in context.selected_asset_files:
+            if current_library_name == "LOCAL":
+                selected_asset_name = asset_file.local_id.name
+            else:
+                asset_fullpath = library_path / asset_file.relative_path
+                print(f"{asset_file.relative_path} is selected in the asset browser.")
+                print(f"It is located in a user library named '{current_library_name}'")
+
+        from_action = bpy.data.libraries.load(str(asset_fullpath), assets_only = True)
+
+        print(bpy.data.libraries.load(str(asset_fullpath), assets_only = True))
+        # print(context.selected_asset_files[0].local_id.name)
+        # with bpy.data.libraries.load(str(blend_file), assets_only = True) as (data_from, data_to):
+        #     from_action = data_from.actions[selected_asset_name]
+        #     print(data_from.actions)
+
         to_action = context.object.animation_data.action
         frame_current = context.scene.frame_current
         if to_action is None:
