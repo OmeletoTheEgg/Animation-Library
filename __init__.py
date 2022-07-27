@@ -19,8 +19,6 @@ import bpy
 from pathlib import Path
 from typing import Any, List, Iterable
 
-Datablock = Any
-
 from bpy.types import (
     Action,
     Object,
@@ -191,7 +189,6 @@ class ApplyAnimationAsset(Operator):
             selected_asset_name = asset_file.local_id.name
             
         from_action = bpy.data.actions.get(selected_asset_name)
-
         to_action = context.object.animation_data.action
         frame_current = context.scene.frame_current
         if to_action is None:
@@ -211,9 +208,6 @@ class ApplyAnimationAsset(Operator):
 
         if current_library_name != 'LOCAL':
             bpy.data.actions.remove(from_action)
-        # this is just to update the fcurves after applying animation. 
-        # I found that fcurve.update() isn't working maybe just from what I expect
-        # context.scene.frame_current = frame_current
         return {'FINISHED'}
         
 class AnimationLibraryPanel(bpy.types.Panel):
