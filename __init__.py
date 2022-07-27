@@ -12,6 +12,7 @@ bl_info = {
 
 import inspect
 from typing import Optional, FrozenSet, Set, Union, Iterable, cast, List, Tuple
+
 import bpy
 # import re
 
@@ -178,28 +179,18 @@ class ApplyAnimationAsset(Operator):
     def execute(self, context: bpy.types.Context) -> Set[str]:
         current_library_name = context.area.spaces.active.params.asset_library_ref
         selected_asset_name = []
-        library_path : Path
-
-        asset_fullpath : Any
+        asset_file = context.selected_asset_files[0]
 
         if current_library_name != "LOCAL":  # NOT Current file
             library_path = Path(context.preferences.filepaths.asset_libraries.get(current_library_name).path)
-
-        for asset_file in context.selected_asset_files:
-            if current_library_name == "LOCAL":
-                selected_asset_name = asset_file.local_id.name
-            else:
-                asset_fullpath = library_path / asset_file.relative_path
-                print(f"{asset_file.relative_path} is selected in the asset browser.")
-                print(f"It is located in a user library named '{current_library_name}'")
-
-        from_action = bpy.data.libraries.load(str(asset_fullpath), assets_only = True)
-
-        print(bpy.data.libraries.load(str(asset_fullpath), assets_only = True))
-        # print(context.selected_asset_files[0].local_id.name)
-        # with bpy.data.libraries.load(str(blend_file), assets_only = True) as (data_from, data_to):
-        #     from_action = data_from.actions[selected_asset_name]
-        #     print(data_from.actions)
+            asset_fullpath = library_path / asset_file.relative_path
+            selected_asset_name = asset_fullpath.name
+            with bpy.data.libraries.load(str(asset_fullpath.parent.parent), assets_only = True) as (data_from, data_to):
+                data_to.actions = [selected_asset_name]
+        else:
+            selected_asset_name = asset_file.local_id.name
+            
+        from_action = bpy.data.actions.get(selected_asset_name)
 
         to_action = context.object.animation_data.action
         frame_current = context.scene.frame_current
@@ -213,10 +204,13 @@ class ApplyAnimationAsset(Operator):
             keyframe = fcurves.keyframe_points[0]
             if keyframe.co.x < smallest_x:
                 smallest_x = keyframe.co.x
-
+                
         copy_location_to_action(from_action, to_action, frame_current, smallest_x, True)
         copy_rotation_to_action(from_action, to_action, frame_current, smallest_x, True)
         copy_scale_to_action(from_action, to_action, frame_current, smallest_x, True)
+
+        if current_library_name != 'LOCAL':
+            bpy.data.actions.remove(from_action)
         # this is just to update the fcurves after applying animation. 
         # I found that fcurve.update() isn't working maybe just from what I expect
         # context.scene.frame_current = frame_current
