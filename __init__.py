@@ -14,33 +14,15 @@ import inspect
 from typing import Optional, FrozenSet, Set, Union, Iterable, cast, List, Tuple
 
 import bpy
-# import re
 
 from pathlib import Path
 from typing import Any, List, Iterable
 
 from bpy.types import (
     Action,
-    Object,
     FCurve,
-    Operator,
-    AssetHandle,
-    Context,
-    Panel,
-    UIList,
-    WindowManager,
-    WorkSpace,
+    Operator
 )
-from bpy_extras import asset_utils
-
-# Things left to do
-# Fix when the selected bones in the asset is not present in the destination action
-# Try not using bone.path_from_id all that shit
-# Select bones operator
-# Do the things for rotation and location, maybe also bbone 
-# Create fail-cases of like what if there's no keyframes selected
-# Check if pose library only works in pose mode. If so, make an exception to not have object mode
-# Make a button for create pose asset
 
 addon_keymaps: List[Tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
 
@@ -180,7 +162,16 @@ class ApplyAnimationAsset(Operator):
         asset_file = context.selected_asset_files[0]
 
         if current_library_name != "LOCAL":  # NOT Current file
-            library_path = Path(context.preferences.filepaths.asset_libraries.get(current_library_name).path)
+            library_path = []
+            if current_library_name == "ALL":
+                for i in range(len(current_library_name)):
+                    test_path = Path(context.preferences.filepaths.asset_libraries[i].path)
+                    if (test_path / asset_file.relative_path):
+                        library_path = test_path
+                        break
+            else:
+                library_path = Path(context.preferences.filepaths.asset_libraries.get(current_library_name).path)
+                
             asset_fullpath = library_path / asset_file.relative_path
             selected_asset_name = asset_fullpath.name
             with bpy.data.libraries.load(str(asset_fullpath.parent.parent), assets_only = True) as (data_from, data_to):
