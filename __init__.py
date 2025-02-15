@@ -147,9 +147,7 @@ class CreateAnimationAsset(Operator):
 class ApplyAnimationAsset(Operator):
     bl_idname = "animation.apply_animation_asset"
     bl_label = "Apply Animation Asset"
-    bl_description = (
-        "Applies the Asset keyframes to the current action"
-    )
+    bl_description = "Applies the Asset keyframes to the current action"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -157,28 +155,32 @@ class ApplyAnimationAsset(Operator):
         return context.active_object is not None
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        current_library_name = context.area.spaces.active.params.asset_library_ref
-        selected_asset_name = []
-        asset_file = context.selected_asset_files[0]
+        current_library_name = context.area.spaces.active.params.asset_library_reference
+        selected_asset_name = ""
+        asset_file = context.selected_assets[0]
 
-        if current_library_name != "LOCAL":  # NOT Current file
-            library_path = []
+        if current_library_name != "LOCAL":  # Not current file
+            library_path = None
             if current_library_name == "ALL":
-                for i in range(len(current_library_name)):
-                    test_path = Path(context.preferences.filepaths.asset_libraries[i].path)
-                    if (test_path / asset_file.relative_path):
+                # Iterate over all available asset libraries
+                for lib in context.preferences.filepaths.asset_libraries:
+                    test_path = Path(lib.path)
+                    # Check if the asset file exists in this library
+                    if (test_path / asset_file.full_path).exists():
                         library_path = test_path
                         break
             else:
-                library_path = Path(context.preferences.filepaths.asset_libraries.get(current_library_name).path)
-                
-            asset_fullpath = library_path / asset_file.relative_path
+                library = context.preferences.filepaths.asset_libraries.get(current_library_name)
+                if library:
+                    library_path = Path(library.path)
+            
+            asset_fullpath = Path(asset_file.full_path)
             selected_asset_name = asset_fullpath.name
-            with bpy.data.libraries.load(str(asset_fullpath.parent.parent), assets_only = True) as (data_from, data_to):
+            with bpy.data.libraries.load(str(asset_fullpath.parent.parent), assets_only=True) as (data_from, data_to):
                 data_to.actions = [selected_asset_name]
         else:
             selected_asset_name = asset_file.local_id.name
-            
+
         from_action = bpy.data.actions.get(selected_asset_name)
         to_action = context.object.animation_data.action
         frame_current = context.scene.frame_current
@@ -187,19 +189,19 @@ class ApplyAnimationAsset(Operator):
             context.object.animation_data.action = to_action
 
         smallest_x = from_action.fcurves[0].keyframe_points[0].co.x
-        
-        for fcurves in from_action.fcurves:
-            keyframe = fcurves.keyframe_points[0]
+        for fcurve in from_action.fcurves:
+            keyframe = fcurve.keyframe_points[0]
             if keyframe.co.x < smallest_x:
                 smallest_x = keyframe.co.x
-                
+
         copy_location_to_action(from_action, to_action, frame_current, smallest_x, True)
         copy_rotation_to_action(from_action, to_action, frame_current, smallest_x, True)
         copy_scale_to_action(from_action, to_action, frame_current, smallest_x, True)
 
-        if current_library_name != 'LOCAL':
+        if current_library_name != "LOCAL":
             bpy.data.actions.remove(from_action)
         return {'FINISHED'}
+
         
 class AnimationLibraryPanel(bpy.types.Panel):
     """Creates a Sub-Panel in the Property Area of the 3D View"""
